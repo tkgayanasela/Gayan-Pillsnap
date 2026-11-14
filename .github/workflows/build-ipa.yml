@@ -1,0 +1,42 @@
+# Builds PillSnap on a GitHub-hosted Mac and gives you an unsigned .ipa to download.
+# Use this if you only have a Windows PC: sign + install the .ipa with Sideloadly (see README).
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build app (no code signing)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project PillSnap.xcodeproj \
+            -scheme PillSnap \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/PillSnap.app Payload/
+          zip -qry PillSnap-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PillSnap-unsigned-ipa
+          path: PillSnap-unsigned.ipa
